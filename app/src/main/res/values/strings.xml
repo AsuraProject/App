@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Asura</string>
+    <string name="AsuraTitle">Welcome to Asura</string>
+    <string name="AsuraResume">Asura is a project of smart glasses open source, using Arduino and Atmega technology</string>
+    <string name="getStarted">Get Started</string>
+    <string name="searchGlasses">Search Glasses</string>
+    <string name="store">Store</string>
+    <string name="myApps">My Apps</string>
+    <string name="searchApps">Search Apps</string>
+</resources>
