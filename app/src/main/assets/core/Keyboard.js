@@ -74,8 +74,10 @@ function Keyboard(app){
   
   this.setPositions = function(){
     mainView.cleanView();
-    mainView.setString(12, 4, this.text.toString());
-    if(atualLetter != lettersArray.length) mainView.setString(29, 17, lettersArray[atualLetter]);
+    mainView.setFont('4');
+    mainView.setString(1, 4, this.text.toString());
+    mainView.setFont('12');
+    if(atualLetter != lettersArray.length) mainView.setString(29, 20, lettersArray[atualLetter]);
     this.app.setView(mainView);
   }
   
@@ -140,8 +142,10 @@ function NumericKeyboard(app){
   
   this.setPositions = function(){
     mainView.cleanView();
-    mainView.setString(12, 4, this.text.toString());
-    if(atualNumber != 10) mainView.setString(29, 17, atualNumber.toString());
+    mainView.setFont('4');
+    mainView.setString(1, 4, this.text.toString());
+    mainView.setFont('12');
+    if(atualNumber != 10) mainView.setString(29, 20, atualNumber.toString());
     this.app.setView(mainView);
   }
   
@@ -206,8 +210,10 @@ function SpecificKeyboard(app, lettersArray){
   
   this.setPositions = function(){
     mainView.cleanView();
-    mainView.setString(12, 4, this.text.toString());
-    if(atualLetter != lettersArray.length) mainView.setString(29, 17, lettersArray[atualLetter]);
+    mainView.setFont('4');
+    mainView.setString(1, 4, this.text.toString());
+    mainView.setFont('12');
+    if(atualLetter != lettersArray.length) mainView.setString(29, 20, lettersArray[atualLetter]);
     this.app.setView(mainView);
   }
   

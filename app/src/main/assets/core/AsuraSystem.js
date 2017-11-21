@@ -22,10 +22,7 @@ function AsuraSystemImportApps(apps){
 	var appsArray = apps.substr(1, (apps.length - 2));
 	appsArray = appsArray.split(', ');
 
-	console.log(appsArray);
-	console.log(typeof(appsArray));
 	importNumber = appsArray.length;
-	console.log(importNumber);
 	AsuraSystem.importNumber(importNumber);
 	for(count = 0; count < importNumber; count++){
 		AsuraSystem.import('apps/' + appsArray[count]);

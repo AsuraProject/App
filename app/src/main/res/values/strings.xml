@@ -7,4 +7,5 @@
     <string name="store">Store</string>
     <string name="myApps">My Apps</string>
     <string name="searchApps">Search Apps</string>
+    <string name="installApp">Install App</string>
 </resources>

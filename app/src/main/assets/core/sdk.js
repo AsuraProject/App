@@ -37,7 +37,6 @@ function App(applicationName, runningName){
 	}
 
 	this.onDestroy = function(){
-		this.startApp(AsuraSystem);
 	}
 
 	/* Screen */
@@ -55,6 +54,11 @@ function App(applicationName, runningName){
 
 	this.setApp = function(logo, app){
 		AsuraSystem.getApps(logo, app);
+	}
+
+	this.destroy = function(){
+		this.onDestroy();
+		this.startApp(AsuraSystem);
 	}
 
 	/*  Importer */
@@ -114,56 +118,23 @@ function View(){
 		this.viewValue.push(result);
 	}
 
+	this.setFont = function(font){
+		this.viewValue.push("#f" + font);
+	}
+
 	this.setString = function(x, y, string){
-		stringUse = string.length;
+		x = x.toString();
+		y = y.toString();
 
-		xString = x.toString();
-		yString = y.toString();
-
-		if(xString.length == 1){
-			xString = "0" + xString;
+		if(x.length == 1){
+			x = "0" + x.toString();
 		}
 
-		if(yString.length == 1){
-			yString = "0" + yString;
+		if(y.length == 1){
+			y = "0" + y.toString();
 		}
 
-		if((64 - x) > string.length){
-			result = "#" + xString + yString + string;
-			this.viewValue.push(result);
-		}else{
-			end = string.length;
-			start = 0;
-			nextSpace = 0;
-
-			while(end >= 0){
-				whileA = 0;
-				whileB = nextSpace;
-				while(whileA < (64 - x)){
-					if(string[whileB] == ' ' || string[whileB] == null){
-						nextSpace = whileB;
-					}
-					whileA += 4;
-					whileB++;
-				}
-
-				result = "#" + xString + yString + string.substring(start, nextSpace);
-				this.viewValue.push(result);
-
-				nextSpace++;
-				start = nextSpace;
-				end = end - nextSpace;
-				console.log(end);
-
-				xString = "00";
-				x = 0;
-				y = y + 5;
-				yString = y.toString();
-				if(yString.length == 1){
-					yString = "0" + yString;
-				}
-			}
-		}
+		this.viewValue.push("#" + x + y + string);
 	}
 
 	this.cleanView = function(){

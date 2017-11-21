@@ -52,10 +52,13 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.nbsp.materialfilepicker.MaterialFilePicker;
+import com.nbsp.materialfilepicker.ui.FilePickerActivity;
 
 @SuppressLint("SetJavaScriptEnabled")
 public class AsuraActivity extends AppCompatActivity implements BluetoothService.OnBluetoothEventCallback, View.OnClickListener {
@@ -98,7 +101,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
         mService = BluetoothService.getDefaultInstance();
         mWriter = new BluetoothWriter(mService);
 
-        writeSleep("#1212Asura");
+        writeSleep("#fFreedom");
+        writeSleep("#1414ASURA");
+        writeSleep("#0726PROJECT");
         writeSleep("#ended");
 
         applicationRunning = "AsuraSystem";
@@ -173,7 +178,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
                 AsuraCoreView.loadUrl("javascript:" + applicationRunning + ".onRight()");
                 break;
             case '4':
-                AsuraCoreView.loadUrl("javascript:" + applicationRunning + ".onDestroy()");
+                AsuraCoreView.loadUrl("javascript:" + applicationRunning + ".destroy()");
                 break;
         }
     }
@@ -212,9 +217,12 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
     @JavascriptInterface
     public void setView(String[] view){
+        Log.w("InitialView", Arrays.toString(view));
         for (String aView : view) {
             writeSleep(aView);
+            Log.w("View", aView);
         }
+        Log.w("View", "#ended");
         writeSleep("#ended");
     }
 
@@ -228,7 +236,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
     private void writeSleep(final String msg) {
         mWriter.writeln(msg);
-        SystemClock.sleep(80);
+        SystemClock.sleep(50);
     }
 
     private void importApps(){
@@ -340,8 +348,6 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
             appsEditor.putStringSet("appsInstalled", nameAppsInstalled);
             appsEditor.putStringSet("appsJs", jsAppsInstalled);
             appsEditor.apply();
-
-            importApps();
         }
 
         @Override
@@ -367,10 +373,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
             appsEditor.putStringSet("appsImg", imgAppsInstalled);
             appsEditor.apply();
 
-            importApps();
 
-            appsListData = new ArrayList<>();
-            getStoreNew(100, 0);
         }
 
         @Override
@@ -431,6 +434,92 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
             appsListData.add(new App(nameAppsInstalled.toArray()[finalCounter].toString(), "Application", imgAppsInstalled.toArray()[finalCounter].toString(), desinstallFunction));
             appsView.setAdapter(new MyAppsAdapter(this, appsListData));
             counter++;
+        }
+    }
+
+    // Install non-store app Functions
+    public void installApp(View v){
+        checkPermissionsAndOpenFilePicker();
+    }
+
+    private void checkPermissionsAndOpenFilePicker() {
+        String permission = Manifest.permission.READ_EXTERNAL_STORAGE;
+
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                Toast.makeText(this, "Allow external storage reading", Toast.LENGTH_SHORT).show();
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{permission}, PERMISSIONS_REQUEST_CODE);
+            }
+        } else {
+            openFilePicker();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_CODE: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    openFilePicker();
+                } else {
+                    showError();
+                }
+            }
+        }
+    }
+
+    private void openFilePicker() {
+        new MaterialFilePicker()
+                .withActivity(this)
+                .withRequestCode(FILE_PICKER_REQUEST_CODE)
+                .withHiddenFiles(true)
+                .withFilter(Pattern.compile(".*\\.js$"))
+                .withFilterDirectories(true)
+                .withTitle("Select JS")
+                .start();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == FILE_PICKER_REQUEST_CODE && resultCode == RESULT_OK) {
+            String path = data.getStringExtra(FilePickerActivity.RESULT_FILE_PATH);
+
+            if (path != null) {
+                String fileName = path.split('/')[path.split('/').length() - 1];
+
+                writer = new BufferedWriter(new FileWriter(new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/", fileName)));
+                writer.write(data);
+                writer.close();
+
+                SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
+
+                Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
+                Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
+
+                nameAppsInstalled.add(fileName.split('.js')[fileName.split('.js').length() - 1]);
+                jsAppsInstalled.add(fileName);
+
+                SharedPreferences.Editor appsEditor = appsInstalled.edit();
+                appsEditor.remove("appsInstalled");
+                appsEditor.remove("appsJs");
+                appsEditor.apply();
+                
+                appsEditor.putStringSet("appsInstalled", nameAppsInstalled);
+                appsEditor.putStringSet("appsJs", jsAppsInstalled);
+                appsEditor.apply();
+
+                Set<String> imgAppsInstalled = appsInstalled.getStringSet("appsImg", new HashSet<String>());
+                imgAppsInstalled.add(fileName.split('.js')[fileName.split('.js').length() - 1] + ".jpg");
+
+                SharedPreferences.Editor appsEditor = appsInstalled.edit();
+                appsEditor.remove("appsImg");
+                appsEditor.apply();
+                appsEditor.putStringSet("appsImg", imgAppsInstalled);
+                appsEditor.apply();                                
+            }
         }
     }
 }

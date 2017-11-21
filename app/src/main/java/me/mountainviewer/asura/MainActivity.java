@@ -52,9 +52,9 @@ public class MainActivity extends AppCompatActivity {
         Set<String> apps = new HashSet<>();
         Set<String> appsJs = new HashSet<>();
         Set<String> appsImg = new HashSet<>();
-        apps.add("Atual Hour");
-        appsJs.add("hour.js");
-        appsImg.add("hour.jpg");
+        apps.add("Clock");
+        appsJs.add("Clock.js");
+        appsImg.add("Clock.jpg");
 
         SharedPreferences.Editor welcomeEditor = getSharedPreferences("preferencesApp", MODE_PRIVATE).edit();
         welcomeEditor.putBoolean("isWelcomed", true);
