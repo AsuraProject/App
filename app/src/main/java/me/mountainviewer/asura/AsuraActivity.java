@@ -14,12 +14,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -31,6 +36,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -50,12 +56,19 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.nbsp.materialfilepicker.MaterialFilePicker;
 import com.nbsp.materialfilepicker.ui.FilePickerActivity;
@@ -72,6 +85,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
     RecyclerView appsView;
     LinearLayout searchLayout;
+    TextView installAppTextView;
     private List<App> appsListData;
 
     WebView AsuraCoreView;
@@ -81,6 +95,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     private static final int DOWNLOAD_THREAD_POOL_SIZE = 4;
     private MyDownloadDownloadStatusListenerV1 myDownloadStatusListener = new MyDownloadDownloadStatusListenerV1();
     private MyDownloadDownloadStatusListenerV2 myDownloadStatusListener2 = new MyDownloadDownloadStatusListenerV2();
+
+    final int PERMISSIONS_REQUEST_CODE = 0;
+    final int FILE_PICKER_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +111,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
         appsView.setAdapter(new StoreItemAdapter(this, appsListData));
 
         searchLayout = (LinearLayout) findViewById(R.id.searchLayout);
+        installAppTextView = (TextView) findViewById(R.id.installAppTextView);
 
         RecyclerView.LayoutManager layout = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         appsView.setLayoutManager(layout);
@@ -141,12 +159,14 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
     //XML Functions
     public void storeClick(View v) {
+        installAppTextView.setVisibility(View.GONE);
         searchLayout.setVisibility(View.VISIBLE);
         appsListData = new ArrayList<>();
         getStoreNew(100, 0);
     }
 
     public void myAppsClick(View v) {
+        installAppTextView.setVisibility(View.VISIBLE);
         searchLayout.setVisibility(View.GONE);
         appsListData = new ArrayList<>();
         getMyApps();
@@ -373,7 +393,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
             appsEditor.putStringSet("appsImg", imgAppsInstalled);
             appsEditor.apply();
 
-
+            getMyApps();
         }
 
         @Override
@@ -463,7 +483,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     openFilePicker();
                 } else {
-                    showError();
+                    Toast.makeText(this, "Accept the request", Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -488,18 +508,22 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
             String path = data.getStringExtra(FilePickerActivity.RESULT_FILE_PATH);
 
             if (path != null) {
-                String fileName = path.split('/')[path.split('/').length() - 1];
+                String fileName = path.substring(path.lastIndexOf("/") + 1);
 
-                writer = new BufferedWriter(new FileWriter(new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/", fileName)));
-                writer.write(data);
-                writer.close();
+                try {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/", fileName)));
+                    writer.write(readFile(path));
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
                 SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
 
                 Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
                 Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
 
-                nameAppsInstalled.add(fileName.split('.js')[fileName.split('.js').length() - 1]);
+                nameAppsInstalled.add(fileName.split(".js")[fileName.split(".js").length - 1]);
                 jsAppsInstalled.add(fileName);
 
                 SharedPreferences.Editor appsEditor = appsInstalled.edit();
@@ -512,14 +536,36 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
                 appsEditor.apply();
 
                 Set<String> imgAppsInstalled = appsInstalled.getStringSet("appsImg", new HashSet<String>());
-                imgAppsInstalled.add(fileName.split('.js')[fileName.split('.js').length() - 1] + ".jpg");
+                imgAppsInstalled.add(fileName.split(".js")[fileName.split(".js").length - 1] + ".jpg");
 
-                SharedPreferences.Editor appsEditor = appsInstalled.edit();
                 appsEditor.remove("appsImg");
                 appsEditor.apply();
                 appsEditor.putStringSet("appsImg", imgAppsInstalled);
-                appsEditor.apply();                                
+                appsEditor.apply();
+
+                getMyApps();
             }
         }
+    }
+
+    private String readFile(String path){
+        String filename = path.substring(path.lastIndexOf("/") + 1);
+        path = path.substring(0, path.lastIndexOf("/"));
+
+        StringBuilder text = new StringBuilder();
+
+        try{
+            BufferedReader br = new BufferedReader(new FileReader(new File(path, filename)));
+            String line;
+
+            while((line = br.readLine()) != null){
+                text.append(line);
+                text.append('\n');
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return text.toString();
     }
 }
