@@ -17,7 +17,6 @@ limitations under the License. */
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Handler;
@@ -59,15 +58,12 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.nbsp.materialfilepicker.MaterialFilePicker;
@@ -99,13 +95,14 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     final int PERMISSIONS_REQUEST_CODE = 0;
     final int FILE_PICKER_REQUEST_CODE = 1;
 
+    private AppPreferences appPreferences;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_asura);
 
-        appsListData = new ArrayList<>();
-        getStoreNew(100, 0);
+        appPreferences = new AppPreferences(this);
 
         appsView = (RecyclerView) findViewById(R.id.recyclerView);
         appsView.setAdapter(new StoreItemAdapter(this, appsListData));
@@ -115,6 +112,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
         RecyclerView.LayoutManager layout = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         appsView.setLayoutManager(layout);
+
+        appsListData = new ArrayList<>();
+        getStoreNew(100, 0);
 
         mService = BluetoothService.getDefaultInstance();
         mWriter = new BluetoothWriter(mService);
@@ -161,14 +161,12 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     public void storeClick(View v) {
         installAppTextView.setVisibility(View.GONE);
         searchLayout.setVisibility(View.VISIBLE);
-        appsListData = new ArrayList<>();
         getStoreNew(100, 0);
     }
 
     public void myAppsClick(View v) {
         installAppTextView.setVisibility(View.VISIBLE);
         searchLayout.setVisibility(View.GONE);
-        appsListData = new ArrayList<>();
         getMyApps();
     }
 
@@ -260,10 +258,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     }
 
     private void importApps(){
-        SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
-        Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
+        String[] jsAppsInstalled = appPreferences.get("appsJs");
 
-        AsuraCoreView.loadUrl("javascript:AsuraSystemImportApps('" + jsAppsInstalled.toString() + "')");
+        AsuraCoreView.loadUrl("javascript:AsuraSystemImportApps('" + Arrays.toString(jsAppsInstalled) + "')");
     }
 
     // Store Functions
@@ -279,6 +276,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     }
 
     private void getStore(String url){
+        appsListData = new ArrayList<>();
+        appsView.setAdapter(new StoreItemAdapter(this, appsListData));
+
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         JsonArrayRequest json = new JsonArrayRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONArray>() {
@@ -300,16 +300,14 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
 
     private void getStoreApps(JSONArray response){
         int counter = 0;
-        SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
-
-        Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
+        String[] nameAppsInstalled = appPreferences.get("appsInstalled");
 
         while(counter < response.length()){
             final JSONObject json;
             try {
                 json = response.getJSONObject(counter);
 
-                if(!nameAppsInstalled.contains(json.getString("name"))) {
+                if(!Arrays.asList(nameAppsInstalled).contains(json.getString("name"))) {
                     final String nameApp = json.getString("name");
                     final String description = json.getString("description");
                     final String img = json.getString("img");
@@ -352,22 +350,8 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     class MyDownloadDownloadStatusListenerV1 implements DownloadStatusListenerV1 {
         @Override
         public void onDownloadComplete(DownloadRequest request) {
-            SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
-
-            Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
-            Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
-
-            nameAppsInstalled.add(request.getDownloadContext().toString());
-            jsAppsInstalled.add(request.getDestinationURI().toString().split("/")[5]);
-
-            SharedPreferences.Editor appsEditor = appsInstalled.edit();
-            appsEditor.remove("appsInstalled");
-            appsEditor.remove("appsJs");
-            appsEditor.apply();
-            
-            appsEditor.putStringSet("appsInstalled", nameAppsInstalled);
-            appsEditor.putStringSet("appsJs", jsAppsInstalled);
-            appsEditor.apply();
+            appPreferences.add("appsInstalled", request.getDownloadContext().toString());
+            appPreferences.add("appsJs", request.getDestinationURI().toString().split("/")[5]);
         }
 
         @Override
@@ -383,17 +367,8 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     class MyDownloadDownloadStatusListenerV2 implements DownloadStatusListenerV1 {
         @Override
         public void onDownloadComplete(DownloadRequest request) {
-            SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
-            Set<String> imgAppsInstalled = appsInstalled.getStringSet("appsImg", new HashSet<String>());
-            imgAppsInstalled.add(request.getDestinationURI().toString().split("/")[6]);
-
-            SharedPreferences.Editor appsEditor = appsInstalled.edit();
-            appsEditor.remove("appsImg");
-            appsEditor.apply();
-            appsEditor.putStringSet("appsImg", imgAppsInstalled);
-            appsEditor.apply();
-
-            getMyApps();
+            appPreferences.add("appsImg", request.getDestinationURI().toString().split("/")[6]);
+            getStoreNew(100, 0);
         }
 
         @Override
@@ -409,49 +384,36 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
     // MyApps Functions
 
     private void getMyApps(){
-        final SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
+        appsListData = new ArrayList<>();
+        appsView.setAdapter(new StoreItemAdapter(this, appsListData));
 
-        final Set<String> imgAppsInstalled = appsInstalled.getStringSet("appsImg", new HashSet<String>());
-        final Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
-        final Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
+        final String[] imgAppsInstalled = appPreferences.get("appsImg");
+        final String[] nameAppsInstalled = appPreferences.get("appsInstalled");
+        final String[] jsAppsInstalled = appPreferences.get("appsJs");
 
         int counter = 0;
-        while(counter < nameAppsInstalled.size()) {
+        while(counter < nameAppsInstalled.length) {
 
             final int finalCounter = counter;
             View.OnClickListener desinstallFunction = new View.OnClickListener() {
                 @SuppressWarnings("SuspiciousMethodCalls")
                 @Override
                 public void onClick(View v) {
-                    SharedPreferences.Editor appsEditor = appsInstalled.edit();
-
-                    File jsFile = new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/", jsAppsInstalled.toArray()[finalCounter].toString());
-                    File imgFile = new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/img/", imgAppsInstalled.toArray()[finalCounter].toString());
+                    File jsFile = new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/", jsAppsInstalled[finalCounter]);
+                    File imgFile = new File("data/data/" + getApplicationContext().getPackageName() + "/core/apps/img/", imgAppsInstalled[finalCounter]);
                     jsFile.delete();
                     imgFile.delete();
 
-                    appsEditor.remove("appsImg");
-                    appsEditor.remove("appsInstalled");
-                    appsEditor.remove("appsJs");
-                    appsEditor.apply();
-
-                    imgAppsInstalled.remove(imgAppsInstalled.toArray()[finalCounter]);
-                    nameAppsInstalled.remove(nameAppsInstalled.toArray()[finalCounter]);
-                    jsAppsInstalled.remove(jsAppsInstalled.toArray()[finalCounter]);
-
-                    appsEditor.putStringSet("appsImg", imgAppsInstalled);
-                    appsEditor.putStringSet("appsInstalled", nameAppsInstalled);
-                    appsEditor.putStringSet("appsJs", jsAppsInstalled);
-                    appsEditor.apply();
+                    appPreferences.remove("appsImg", imgAppsInstalled[finalCounter]);
+                    appPreferences.remove("appsInstalled", nameAppsInstalled[finalCounter]);
+                    appPreferences.remove("appsJs", jsAppsInstalled[finalCounter]);
 
                     importApps();
-
-                    appsListData = new ArrayList<>();
                     getMyApps();
                 }
             };
 
-            appsListData.add(new App(nameAppsInstalled.toArray()[finalCounter].toString(), "Application", imgAppsInstalled.toArray()[finalCounter].toString(), desinstallFunction));
+            appsListData.add(new App(nameAppsInstalled[finalCounter], "Application", imgAppsInstalled[finalCounter], desinstallFunction));
             appsView.setAdapter(new MyAppsAdapter(this, appsListData));
             counter++;
         }
@@ -518,30 +480,9 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
                     e.printStackTrace();
                 }
 
-                SharedPreferences appsInstalled = getSharedPreferences("preferencesApp", MODE_PRIVATE);
-
-                Set<String> nameAppsInstalled = appsInstalled.getStringSet("appsInstalled", new HashSet<String>());
-                Set<String> jsAppsInstalled = appsInstalled.getStringSet("appsJs", new HashSet<String>());
-
-                nameAppsInstalled.add(fileName.split(".js")[fileName.split(".js").length - 1]);
-                jsAppsInstalled.add(fileName);
-
-                SharedPreferences.Editor appsEditor = appsInstalled.edit();
-                appsEditor.remove("appsInstalled");
-                appsEditor.remove("appsJs");
-                appsEditor.apply();
-                
-                appsEditor.putStringSet("appsInstalled", nameAppsInstalled);
-                appsEditor.putStringSet("appsJs", jsAppsInstalled);
-                appsEditor.apply();
-
-                Set<String> imgAppsInstalled = appsInstalled.getStringSet("appsImg", new HashSet<String>());
-                imgAppsInstalled.add(fileName.split(".js")[fileName.split(".js").length - 1] + ".jpg");
-
-                appsEditor.remove("appsImg");
-                appsEditor.apply();
-                appsEditor.putStringSet("appsImg", imgAppsInstalled);
-                appsEditor.apply();
+                appPreferences.add("appsInstalled", fileName.split(".js")[fileName.split(".js").length - 1]);
+                appPreferences.add("appsImg", fileName.split(".js")[fileName.split(".js").length - 1] + ".jpg");
+                appPreferences.add("appsJs", fileName);
 
                 getMyApps();
             }
@@ -565,7 +506,7 @@ public class AsuraActivity extends AppCompatActivity implements BluetoothService
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        
         return text.toString();
     }
 }

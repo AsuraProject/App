@@ -34,35 +34,40 @@ AsuraSystem.app = function(){
 	var nv = 0;
 	view = new View;
 
-	AsuraSystem.onCreate = function(){
+	this.onCreate = function(){
 		view.setCustomArrayView(logo[nv]);
-		AsuraSystem.setView(view);
+		this.setView(view);
 	}
 
-	AsuraSystem.onLeft = function(){
+	this.onLeft = function(){
 		if(nv != 0){
 			nv--;
 			view.setCustomArrayView(logo[nv]);
-			AsuraSystem.setView(view);
+			this.setView(view);
+			return;
 		}
+
+		nv = maxNv;
+		view.setCustomArrayView(logo[nv]);
+		this.setView(view);		
 	}
 
-	AsuraSystem.onRight = function(){
+	this.onRight = function(){
 		if(nv != maxNv){
 			nv++;
 			view.setCustomArrayView(logo[nv]);
-			AsuraSystem.setView(view);
+			this.setView(view);
 		}
 	}
 
-	AsuraSystem.onDown = function(){
-		AsuraSystem.startApp(apps[nv]);
+	this.onDown = function(){
+		this.startApp(apps[nv]);
 	}
 
-	AsuraSystem.onCreate();
+	this.onCreate();
 }
 
-AsuraSystem.getApps = function(logoAdd, appAdd){
+this.getApps = function(logoAdd, appAdd){
 	logo.push(logoAdd);
 	apps.push(appAdd);
 }

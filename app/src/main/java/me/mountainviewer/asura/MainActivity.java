@@ -27,8 +27,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashSet;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -49,18 +47,13 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void goToActivity(View v){
-        Set<String> apps = new HashSet<>();
-        Set<String> appsJs = new HashSet<>();
-        Set<String> appsImg = new HashSet<>();
-        apps.add("Clock");
-        appsJs.add("Clock.js");
-        appsImg.add("Clock.jpg");
+        AppPreferences appPreferences = new AppPreferences(this);
+        appPreferences.add("appsInstalled", "Clock");
+        appPreferences.add("appsJs", "Clock.js");
+        appPreferences.add("appsImg", "Clock.jpg");
 
         SharedPreferences.Editor welcomeEditor = getSharedPreferences("preferencesApp", MODE_PRIVATE).edit();
         welcomeEditor.putBoolean("isWelcomed", true);
-        welcomeEditor.putStringSet("appsInstalled", apps);
-        welcomeEditor.putStringSet("appsJs", appsJs);
-        welcomeEditor.putStringSet("appsImg", appsImg);
         welcomeEditor.apply();
 
         Intent intent = new Intent(MainActivity.this, SelectGlassActivity.class);
